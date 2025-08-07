@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Triple AI Assistant</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f7fa;
+            color: #333;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .model-selector {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .model-btn {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        .model-btn.active {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        #gpt-btn {
+            background-color: #10a37f;
+            color: white;
+        }
+        #deepseek-btn {
+            background-color: #3b82f6;
+            color: white;
+        }
+        #gemini-btn {
+            background-color: #ea4335;
+            color: white;
+        }
+        .chat-container {
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            height: 500px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+        }
+        .message {
+            margin-bottom: 15px;
+            padding: 10px 15px;
+            border-radius: 8px;
+            max-width: 80%;
+        }
+        .user-message {
+            background-color: #e3f2fd;
+            margin-left: auto;
+            border-bottom-right-radius: 0;
+        }
+        .ai-message {
+            background-color: #f1f1f1;
+            margin-right: auto;
+            border-bottom-left-radius: 0;
+        }
+        .input-area {
+            display: flex;
+            gap: 10px;
+        }
+        #user-input {
+            flex-grow: 1;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        #send-btn {
+            padding: 12px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        #send-btn:hover {
+            background-color: #45a049;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 10px 0;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Triple AI Assistant</h1>
+        <p>Chat with GPT-4, DeepSeek, or Gemini</p>
+    </div>
+
+    <div class="model-selector">
+        <button id="gpt-btn" class="model-btn active">GPT-4</button>
+        <button id="deepseek-btn" class="model-btn">DeepSeek</button>
+        <button id="gemini-btn" class="model-btn">Gemini</button>
+    </div>
+
+    <div class="chat-container" id="chat-container">
+        <div class="message ai-message">
+            Hello! I'm your AI assistant. Please select a model and start chatting!
+        </div>
+    </div>
+
+    <div class="input-area">
+        <input type="text" id="user-input" placeholder="Type your message here..." autocomplete="off">
+        <button id="send-btn">Send</button>
+    </div>
+
+    <div class="loading" id="loading">Generating response...</div>
+
+    <script>
+        // Current selected model
+        let currentModel = 'gpt';
+        
+        // DOM elements
+        const gptBtn = document.getElementById('gpt-btn');
+        const deepseekBtn = document.getElementById('deepseek-btn');
+        const geminiBtn = document.getElementById('gemini-btn');
+        const chatContainer = document.getElementById('chat-container');
+        const userInput = document.getElementById('user-input');
+        const sendBtn = document.getElementById('send-btn');
+        const loadingIndicator = document.getElementById('loading');
+
+        // Model selection
+        gptBtn.addEventListener('click', () => {
+            currentModel = 'gpt';
+            updateActiveButton();
+            addAIMessage("Now using GPT-4. How can I help you?");
+        });
+
+        deepseekBtn.addEventListener('click', () => {
+            currentModel = 'deepseek';
+            updateActiveButton();
+            addAIMessage("Now using DeepSeek. How can I assist you?");
+        });
+
+        geminiBtn.addEventListener('click', () => {
+            currentModel = 'gemini';
+            updateActiveButton();
+            addAIMessage("Now using Gemini. What would you like to know?");
+        });
+
+        function updateActiveButton() {
+            [gptBtn, deepseekBtn, geminiBtn].forEach(btn => btn.classList.remove('active'));
+            if (currentModel === 'gpt') gptBtn.classList.add('active');
+            if (currentModel === 'deepseek') deepseekBtn.classList.add('active');
+            if (currentModel === 'gemini') geminiBtn.classList.add('active');
+        }
+
+        // Chat functionality
+        sendBtn.addEventListener('click', sendMessage);
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        function sendMessage() {
+            const message = userInput.value.trim();
+            if (message === '') return;
+
+            addUserMessage(message);
+            userInput.value = '';
+            loadingIndicator.style.display = 'block';
+
+            // Call the appropriate API based on selected model
+            if (currentModel === 'gpt') {
+                callGPTAPI(message);
+            } else if (currentModel === 'deepseek') {
+                callDeepSeekAPI(message);
+            } else {
+                callGeminiAPI(message);
+            }
+        }
+
+        function addUserMessage(text) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message user-message';
+            messageDiv.textContent = text;
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function addAIMessage(text) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message ai-message';
+            messageDiv.textContent = text;
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        // API Functions
+        async function callGPTAPI(prompt) {
+            try {
+                const response = await axios.post('/.netlify/functions/gpt', {
+                    prompt: prompt
+                });
+                loadingIndicator.style.display = 'none';
+                addAIMessage(response.data.response);
+            } catch (error) {
+                loadingIndicator.style.display = 'none';
+                addAIMessage("Sorry, I encountered an error with GPT API.");
+                console.error("GPT API Error:", error);
+            }
+        }
+
+        async function callDeepSeekAPI(prompt) {
+            try {
+                const response = await axios.post('/.netlify/functions/deepseek', {
+                    prompt: prompt
+                });
+                loadingIndicator.style.display = 'none';
+                addAIMessage(response.data.response);
+            } catch (error) {
+                loadingIndicator.style.display = 'none';
+                addAIMessage("Sorry, I encountered an error with DeepSeek API.");
+                console.error("DeepSeek API Error:", error);
+            }
+        }
+
+        async function callGeminiAPI(prompt) {
+            try {
+                const response = await axios.post('/.netlify/functions/gemini', {
+                    prompt: prompt
+                });
+                loadingIndicator.style.display = 'none';
+                addAIMessage(response.data.response);
+            } catch (error) {
+                loadingIndicator.style.display = 'none';
+                addAIMessage("Sorry, I encountered an error with Gemini API.");
+                console.error("Gemini API Error:", error);
+            }
+        }
+    </script>
+</body>
+</html>
